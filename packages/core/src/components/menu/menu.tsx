@@ -182,7 +182,7 @@ export class Menu {
 
   protected render() {
     return ([
-      <div class='menu-inner'>
+      <div class='menu-inner ion-page'>
         <slot></slot>
       </div>,
       <ion-backdrop class='menu-backdrop'></ion-backdrop> ,

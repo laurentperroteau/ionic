@@ -1,8 +1,7 @@
 import { Component, Element, Prop } from '@stencil/core';
-import { Config, Scroll, ScrollDetail } from '../../index';
+import { Config, ScrollDetail } from '../../index';
 import { createThemedClasses, getElementClassObject } from '../../utils/theme';
-import { getParentElement, getToolbarHeight } from '../../utils/helpers';
-
+import { getParentElement } from '../../utils/helpers';
 
 @Component({
   tag: 'ion-content',
@@ -15,24 +14,53 @@ import { getParentElement, getToolbarHeight } from '../../utils/helpers';
 export class Content {
   private mode: string;
   private color: string;
-  @Element() private el: HTMLElement;
-  @Prop({ context: 'config' }) config: Config;
 
-  $scroll: Scroll;
+  private cTop = 0;
+  private cBottom = 0;
+  private dirty = false;
+
+  scrollEl: any;
   $scrollDetail: ScrollDetail = {};
   $fixed: HTMLElement;
   $siblingHeader: HTMLElement;
   $siblingFooter: HTMLElement;
 
-  headerHeight: string;
+  @Element() private el: HTMLElement;
+  @Prop({ context: 'config' }) config: Config;
 
+  /**
+   * @output {ScrollEvent} Emitted when the scrolling first starts.
+   */
+  @Prop() ionScrollStart: Function;
+
+  /**
+   * @output {ScrollEvent} Emitted on every scroll event.
+   */
+  @Prop() ionScroll: Function;
+
+  /**
+   * @output {ScrollEvent} Emitted when scrolling ends.
+   */
+  @Prop() ionScrollEnd: Function;
+
+  /**
+   * @input {boolean} If true, the content will scroll behind the headers
+   * and footers. This effect can easily be seen by setting the toolbar
+   * to transparent.
+   */
+  @Prop() fullscreen: boolean = false;
+
+  protected ionViewDidLoad() {
+    this.scrollEl = this.el.querySelector('ion-scroll') as any;
+    this.resize();
+  }
 
   protected ionViewDidUnload() {
-    this.$fixed = this.$scroll = this.$siblingFooter = this.$siblingHeader = this.$scrollDetail = null;
+    this.$fixed = this.scrollEl = this.$siblingFooter = this.$siblingHeader = this.$scrollDetail = null;
   }
 
   enableJsScroll() {
-    this.$scroll.jsScroll = true;
+    this.scrollEl.jsScroll = true;
   }
 
   /**
@@ -42,7 +70,7 @@ export class Content {
    * @returns {Promise} Returns a promise which is resolved when the scroll has completed.
    */
   scrollToTop(duration: number = 300) {
-    return this.$scroll.scrollToTop(duration);
+    return this.scrollEl.scrollToTop(duration);
   }
 
   /**
@@ -52,30 +80,55 @@ export class Content {
    * @returns {Promise} Returns a promise which is resolved when the scroll has completed.
    */
   scrollToBottom(duration: number = 300) {
-    return this.$scroll.scrollToBottom(duration);
+    return this.scrollEl.scrollToBottom(duration);
   }
 
-  /**
-   * @input {boolean} If true, the content will scroll behind the headers
-   * and footers. This effect can easily be seen by setting the toolbar
-   * to transparent.
-   */
-  @Prop() fullscreen: boolean = false;
+  resize() {
+    if (!this.scrollEl) {
+      return;
+    }
+    if (this.fullscreen) {
+      Context.dom.read(() => {
+        Context.dom.read(this.readDimensions.bind(this));
+        Context.dom.write(this.writeDimensions.bind(this));
+      });
+    } else {
+      Context.dom.write(() => this.scrollEl.style = null);
+    }
+  }
 
+  readDimensions() {
+    const parent = getParentElement(this.el);
+    const top = Math.max(this.el.offsetTop, 0);
+    const bottom = Math.max(parent.offsetHeight - top - this.el.offsetHeight, 0);
+    this.dirty = top !== this.cTop || bottom !== this.cBottom;
+    this.cTop = top;
+    this.cBottom = bottom;
+  }
+
+  writeDimensions() {
+    if (!this.dirty) {
+      return;
+    }
+    const style = this.scrollEl.style;
+    style.paddingTop = this.cTop + 'px';
+    style.paddingBottom = this.cBottom + 'px';
+    style.top = -this.cTop + 'px';
+    style.bottom = -this.cBottom + 'px';
+    this.dirty = false;
+  }
 
   protected render() {
-    const scrollStyle: any = {};
+    const props: any = {};
 
-    const pageChildren: HTMLElement[] = getParentElement(this.el).children;
-    const headerHeight = getToolbarHeight('ION-HEADER', pageChildren, this.mode, '44px', '56px');
-    const footerHeight = getToolbarHeight('ION-FOOTER', pageChildren, this.mode, '50px', '48px');
-
-    if (this.fullscreen) {
-      scrollStyle.paddingTop = headerHeight;
-      scrollStyle.paddingBottom = footerHeight;
-    } else {
-      scrollStyle.marginTop = headerHeight;
-      scrollStyle.marginBottom = footerHeight;
+    if (this.ionScrollStart) {
+      props['ionScrollStart'] = this.ionScrollStart.bind(this);
+    }
+    if (this.ionScroll) {
+      props['ionScroll'] = this.ionScroll.bind(this);
+    }
+    if (this.ionScrollEnd) {
+      props['ionScrollEnd'] = this.ionScrollEnd.bind(this);
     }
 
     const themedClasses = createThemedClasses(this.mode, this.color, 'content');
@@ -84,13 +137,15 @@ export class Content {
     const scrollClasses = {
       ...themedClasses,
       ...hostClasses,
-      'statusbar-padding': this.config.getBoolean('statusbarPadding')
     };
 
-    return (
-      <ion-scroll style={scrollStyle} class={scrollClasses}>
+    this.resize();
+
+    return [
+      <ion-scroll props={props} class={scrollClasses}>
         <slot></slot>
-      </ion-scroll>
-    );
+      </ion-scroll>,
+      <slot name='fixed'></slot>
+    ];
   }
 }

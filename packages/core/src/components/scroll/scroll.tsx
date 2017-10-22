@@ -352,7 +352,11 @@ export class Scroll {
   }
 
   protected render() {
-    return <slot></slot>;
+    return (
+      <div class='scroll-inner'>
+        <slot></slot>
+      </div>
+    );
   }
 
 }
