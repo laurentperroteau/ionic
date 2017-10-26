@@ -142,7 +142,7 @@ export class Content {
     this.resize();
 
     return [
-      <ion-scroll props={props} class={scrollClasses}>
+      <ion-scroll class={scrollClasses}>
         <slot></slot>
       </ion-scroll>,
       <slot name='fixed'></slot>

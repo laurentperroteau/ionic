@@ -596,6 +596,9 @@ declare global {
           mode?: string,
           color?: string,
         
+          ionScrollStart?: any,
+          ionScroll?: any,
+          ionScrollEnd?: any,
           fullscreen?: boolean
       }
   }
@@ -626,13 +629,14 @@ declare global {
           mode?: string,
           color?: string,
         
-          disabled?: boolean | "true" | "false",
-          min?: any,
-          max?: any,
-          displayFormat?: any,
-          pickerFormat?: any,
-          cancelText?: any,
-          doneText?: any,
+          pickerCtrl?: any,
+          disabled?: boolean,
+          min?: string,
+          max?: string,
+          displayFormat?: string,
+          pickerFormat?: string,
+          cancelText?: string,
+          doneText?: string,
           yearValues?: any,
           monthValues?: any,
           dayValues?: any,
@@ -643,7 +647,8 @@ declare global {
           dayNames?: any,
           dayShortNames?: any,
           pickerOptions?: any,
-          placeholder?: any
+          placeholder?: string,
+          value?: string
       }
   }
 }
